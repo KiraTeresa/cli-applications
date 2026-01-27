@@ -36,3 +36,22 @@ func Subtract(from string, subtract string) (result string) {
 
 	return fmt.Sprintf("%f", num1-num2)
 }
+
+func Multiply(first string, second string, shouldRoundUp bool) (result string) {
+	num1, err := strconv.ParseFloat(first, 64)
+	if err != nil {
+		fmt.Println("Error: first value is not a decimal")
+		return
+	}
+
+	num2, err := strconv.ParseFloat(second, 64)
+	if err != nil {
+		fmt.Println("Error: second value is not a decimal")
+		return
+	}
+
+	if shouldRoundUp {
+		return fmt.Sprintf("%.2f", num1*num2)
+	}
+	return fmt.Sprintf("%f", num1*num2)
+}
