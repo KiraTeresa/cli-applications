@@ -73,7 +73,7 @@ func Add(task string) {
 	}
 }
 
-func List() {
+func List(listAll bool) {
 	// open the csv file
 	file, err := os.Open("tasks.csv")
 	if err != nil {
@@ -90,7 +90,21 @@ func List() {
 		return
 	}
 
-	fmt.Println(records)
+	if listAll {
+		// list all tasks
+		fmt.Println(records)
+	} else {
+		// only list tasks with status "open"
+		result := make([][]string, 0, len(records))
+
+		for i, r := range records {
+			if i == 0 || r[2] == "open" {
+				result = append(result, r)
+			}
+		}
+
+		fmt.Println(result)
+	}
 }
 
 func Complete(id string) {
