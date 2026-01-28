@@ -19,12 +19,7 @@ func Add(task string) {
 	}
 
 	// read the data from the csv readFile
-	r := csv.NewReader(readFile)
-	records, err := r.ReadAll()
-	if err != nil {
-		fmt.Println("Error reading tasks.csv:", err)
-		return
-	}
+	records := getFileRecords(readFile)
 	readFile.Close()
 
 	// open csv file with append flag
@@ -84,12 +79,7 @@ func List(listAll bool) {
 	defer file.Close()
 
 	// retrieve all data from the csv file
-	r := csv.NewReader(file)
-	records, err := r.ReadAll()
-	if err != nil {
-		fmt.Println("Error reading tasks.csv:", err)
-		return
-	}
+	records := getFileRecords(file)
 
 	var result [][]string
 	if listAll {
@@ -128,50 +118,15 @@ func Complete(id string) {
 	defer file.Close()
 
 	// read data from csv file
-	reader := csv.NewReader(file)
-	records, err := reader.ReadAll()
-	if err != nil {
-		fmt.Println("Error reading tasks.csv:", err)
-		return
-	}
+	records := getFileRecords(file)
 
 	// find index of the entry which should be modified
-	idx := slices.IndexFunc(records, func(r []string) bool {
-		return len(r) > 0 && r[0] == id
-	})
-	if idx == -1 {
-		log.Printf("Task with id %s not found\n", id)
-		return
-	}
+	idx := getIndexOfId(id, records)
 
 	// update entry
 	records[idx][2] = "done"
 
-	// truncate & reset file before writing
-	if err := file.Truncate(0); err != nil {
-		log.Println("Error truncating file:", err)
-		return
-	}
-
-	// ensure to start writing at the beginning
-	if _, err := file.Seek(0, 0); err != nil {
-		log.Println("Error seeking file:", err)
-		return
-	}
-
-	// write updated data to csv file
-	w := csv.NewWriter(file)
-	if err := w.WriteAll(records); err != nil {
-		log.Fatalln("error updating tasks.csv:", err)
-	}
-
-	// ensure all buffered data was written to the file
-	w.Flush()
-
-	// ensure no I/O errors occurred
-	if err := w.Error(); err != nil {
-		log.Fatal(err)
-	}
+	updateFile(file, records)
 }
 
 func Delete(id string) {
@@ -184,21 +139,10 @@ func Delete(id string) {
 	defer file.Close()
 
 	// read data from csv file
-	reader := csv.NewReader(file)
-	records, err := reader.ReadAll()
-	if err != nil {
-		fmt.Println("Error reading tasks.csv:", err)
-		return
-	}
+	records := getFileRecords(file)
 
 	// find index of the entry which should be deleted
-	idx := slices.IndexFunc(records, func(r []string) bool {
-		return len(r) > 0 && r[0] == id
-	})
-	if idx == -1 {
-		log.Printf("Task with id %s not found\n", id)
-		return
-	}
+	idx := getIndexOfId(id, records)
 
 	// update data
 	isLastElement := len(records)-1 == idx
@@ -208,6 +152,10 @@ func Delete(id string) {
 		records = append(records[:idx], records[idx+1:]...)
 	}
 
+	updateFile(file, records)
+}
+
+func updateFile(file *os.File, data [][]string) {
 	// truncate & reset file before writing
 	if err := file.Truncate(0); err != nil {
 		log.Println("Error truncating file:", err)
@@ -222,7 +170,7 @@ func Delete(id string) {
 
 	// write updated data to csv file
 	w := csv.NewWriter(file)
-	if err := w.WriteAll(records); err != nil {
+	if err := w.WriteAll(data); err != nil {
 		log.Fatalln("error updating tasks.csv:", err)
 	}
 
@@ -233,4 +181,26 @@ func Delete(id string) {
 	if err := w.Error(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func getIndexOfId(id string, records [][]string) int {
+	// find index of the entry which should be modified
+	idx := slices.IndexFunc(records, func(r []string) bool {
+		return len(r) > 0 && r[0] == id
+	})
+	if idx == -1 {
+		log.Printf("Task with id %s not found\n", id)
+		os.Exit(1)
+	}
+	return idx
+}
+
+func getFileRecords(file *os.File) [][]string {
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		fmt.Println("Error reading tasks.csv:", err)
+		os.Exit(1)
+	}
+	return records
 }
