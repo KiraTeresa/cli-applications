@@ -10,33 +10,34 @@ import (
 )
 
 func Add(task string) {
-	fmt.Printf("Adding task '%s'\n", task)
-
-	// open csv file if available, otherwise create it
-	file, err := os.OpenFile("tasks.csv", os.O_RDWR|os.O_CREATE, 0660)
+	// open csv readFile if available, otherwise create it
+	readFile, err := os.OpenFile("tasks.csv", os.O_RDONLY|os.O_CREATE, 0660)
 	if err != nil {
 		fmt.Println("Error opening tasks.csv:", err)
 		return
 	}
-	defer file.Close()
 
-	// read the data from the csv file
-	r := csv.NewReader(file)
+	// read the data from the csv readFile
+	r := csv.NewReader(readFile)
 	records, err := r.ReadAll()
 	if err != nil {
 		fmt.Println("Error reading tasks.csv:", err)
 		return
 	}
+	readFile.Close()
 
-	// ensure to start writing at the beginning
-	if _, err := file.Seek(0, 0); err != nil {
-		log.Println("Error seeking file:", err)
+	// open csv file with append flag
+	appendFile, err := os.OpenFile("tasks.csv", os.O_APPEND, 0660)
+	if err != nil {
+		fmt.Println("Error opening tasks.csv:", err)
 		return
 	}
+	defer appendFile.Close()
 
-	w := csv.NewWriter(file)
+	var nextId string
+	w := csv.NewWriter(appendFile)
 
-	// write a header if the file was newly created
+	// write a header if the readFile was newly created
 	if len(records) == 0 {
 		header := []string{"id", "task", "status"}
 		err := w.Write(header)
@@ -45,14 +46,25 @@ func Add(task string) {
 		}
 	}
 
-	// create new data & write it to the file
-	nextId := strconv.Itoa(len(records) + 1)
+	// if file is empty or only contains header, start with id=1
+	if len(records) <= 1 {
+		nextId = "1"
+	} else { // otherwise set id to the next number
+		lastId, err := strconv.Atoi(records[len(records)-1][0])
+		if err != nil {
+			fmt.Println("error evaluating last id:", err)
+			return
+		}
+		nextId = strconv.Itoa(lastId + 1)
+	}
+
+	// create new data & write it to the readFile
 	s := []string{nextId, task, "open"}
 	if err := w.Write(s); err != nil {
 		log.Fatalln("error writing to tasks.csv:", err)
 	}
 
-	// ensure all buffered data was written to the file
+	// ensure all buffered data was written to the readFile
 	w.Flush()
 
 	// ensure no I/O errors occurred
