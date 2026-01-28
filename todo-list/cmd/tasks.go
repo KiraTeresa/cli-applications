@@ -7,6 +7,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"text/tabwriter"
 )
 
 func Add(task string) {
@@ -90,21 +91,31 @@ func List(listAll bool) {
 		return
 	}
 
+	var result [][]string
 	if listAll {
 		// list all tasks
-		fmt.Println(records)
+		result = records
 	} else {
 		// only list tasks with status "open"
-		result := make([][]string, 0, len(records))
+		result = make([][]string, 0, len(records))
 
 		for i, r := range records {
 			if i == 0 || r[2] == "open" {
 				result = append(result, r)
 			}
 		}
-
-		fmt.Println(result)
 	}
+
+	tw := new(tabwriter.Writer)
+	tw.Init(os.Stdout, 0, 8, 2, ' ', 0)
+
+	for i, r := range result {
+		fmt.Fprintf(tw, "%s\t%s\t%s\n", r[0], r[1], r[2])
+		if i == 0 {
+			fmt.Fprintf(tw, "--\t----\t------\n")
+		}
+	}
+	tw.Flush()
 }
 
 func Complete(id string) {
