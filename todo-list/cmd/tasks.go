@@ -62,14 +62,15 @@ func Add(task string) {
 }
 
 func List() {
-	fmt.Println("Listing")
-
+	// open the csv file
 	file, err := os.Open("tasks.csv")
 	if err != nil {
 		fmt.Println("Error opening tasks.csv:", err)
 		return
 	}
+	defer file.Close()
 
+	// retrieve all data from the csv file
 	r := csv.NewReader(file)
 	records, err := r.ReadAll()
 	if err != nil {
