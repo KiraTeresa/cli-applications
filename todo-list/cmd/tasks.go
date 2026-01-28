@@ -150,5 +150,62 @@ func Complete(id string) {
 }
 
 func Delete(id string) {
-	fmt.Printf("Deleting id '%s'\n", id)
+	// open csv file
+	file, err := os.OpenFile("tasks.csv", os.O_RDWR, 0660)
+	if err != nil {
+		fmt.Println("Error opening tasks.csv:", err)
+		return
+	}
+	defer file.Close()
+
+	// read data from csv file
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		fmt.Println("Error reading tasks.csv:", err)
+		return
+	}
+
+	// find index of the entry which should be deleted
+	idx := slices.IndexFunc(records, func(r []string) bool {
+		return len(r) > 0 && r[0] == id
+	})
+	if idx == -1 {
+		log.Printf("Task with id %s not found\n", id)
+		return
+	}
+
+	// update data
+	isLastElement := len(records)-1 == idx
+	if isLastElement {
+		records = append(records[:idx])
+	} else {
+		records = append(records[:idx], records[idx+1:]...)
+	}
+
+	// truncate & reset file before writing
+	if err := file.Truncate(0); err != nil {
+		log.Println("Error truncating file:", err)
+		return
+	}
+
+	// ensure to start writing at the beginning
+	if _, err := file.Seek(0, 0); err != nil {
+		log.Println("Error seeking file:", err)
+		return
+	}
+
+	// write updated data to csv file
+	w := csv.NewWriter(file)
+	if err := w.WriteAll(records); err != nil {
+		log.Fatalln("error updating tasks.csv:", err)
+	}
+
+	// ensure all buffered data was written to the file
+	w.Flush()
+
+	// ensure no I/O errors occurred
+	if err := w.Error(); err != nil {
+		log.Fatal(err)
+	}
 }
